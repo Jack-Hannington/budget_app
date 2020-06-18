@@ -60,6 +60,22 @@ var budgetController = (function() {
             return newItem;
         },
 
+        deleteItem: function(type, id) {
+            var ids, index;
+
+            // id = 3
+
+            var ids = data.allItems[type].map(function(current) {
+                return current.id;
+            });
+
+            index = ids.indexOf(id);
+
+            if (index !== -1) {
+                data.allItems[type].splice(index, 1);
+            }
+        },
+
         calculateBudget: function() {
             //calculate total income and expenses 
             calculateTotal("exp");
@@ -67,7 +83,12 @@ var budgetController = (function() {
             //calculate budget: income - expenses
             data.budget = data.totals.inc - data.totals.exp;
             //calculate the percetage of income that we spent
-            data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100)
+            if (data.totals.inc > 0) {
+                data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100);
+            } else {
+                data.percentage = -1;
+            }
+
         },
 
         getBudget: function() {
@@ -94,7 +115,12 @@ var UIController = (function() {
         inputValue: ".add__value",
         inputBtn: ".add__btn",
         incomeContainer: ".income__list",
-        expensesContainer: ".expenses__list"
+        expensesContainer: ".expenses__list",
+        budgetLabel: ".budget__value",
+        incomeLabel: ".budget__income--value",
+        expensesLabel: ".budget__expenses--value",
+        percentageLabel: ".budget__expenses--percentage",
+        container: ".container"
     };
 
     return {
@@ -126,6 +152,12 @@ var UIController = (function() {
             // Insert HTMl into the DOM
             document.querySelector(element).insertAdjacentHTML("beforeend", newHtml);
         },
+
+        deleteListItem: function(selectorID) {
+            var el = document.getElementById(selectorID);
+            el.parentNode.removeChild(el);
+        },
+
         clearFields: function() {
             var fields;
             fields = document.querySelectorAll(DOMstrings.inputDescription + ", " + DOMstrings.inputValue);
@@ -138,6 +170,19 @@ var UIController = (function() {
 
             fieldsArr[0].focus();
 
+        },
+
+        displayBudget: function(obj) {
+            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
+            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
+            document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
+
+
+            if (obj.percentage > 0) {
+                document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + "%";
+            } else {
+                document.querySelector(DOMstrings.percentageLabel).textContent = "---";
+            }
         },
         getDOMStrings: function() {
             return DOMstrings;
@@ -159,6 +204,7 @@ var controller = (function(budgetCtrl, UICtrl) {
                 ctrlAddItem();
             }
         });
+        document.querySelector(DOM.container).addEventListener("click", ctrlDeleteItem);
     };
 
     var updateBudget = function() {
@@ -168,7 +214,7 @@ var controller = (function(budgetCtrl, UICtrl) {
         var budget = budgetCtrl.getBudget();
 
         //Display the budget on the UI
-        console.log(budget);
+        UICtrl.displayBudget(budget);
     };
 
     var ctrlAddItem = function() {
@@ -195,9 +241,41 @@ var controller = (function(budgetCtrl, UICtrl) {
 
     };
 
+    var ctrlDeleteItem = function(event) {
+        var itemID, splitID, type, ID;
+
+        itemID = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+        if (itemID) {
+
+            //inc-1
+            splitID = itemID.split('-');
+            type = splitID[0];
+            ID = parseInt(splitID[1]);
+
+            //delete the item from the data structure
+            budgetCtrl.deleteItem(type, ID);
+
+            //delete the item from the UI
+            UICtrl.deleteListItem(itemID);
+
+            //update and show the new budget
+            updateBudget();
+
+        }
+    };
+
+
+
     return {
         init: function() {
             console.log("Application has started");
+            UICtrl.displayBudget({
+                budget: 0,
+                totalInc: 0,
+                totalExp: 0,
+                percentage: -1,
+            });
             setupEventListeners();
         }
     };
